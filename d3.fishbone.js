@@ -66,10 +66,10 @@ THE SOFTWARE.
 
         const forceLayout = d3.forceSimulation()
             // .force("charge", d3.forceManyBody().strength(10))
+            .force("charge", d3.forceManyBody().strength(-3000))
+            .force("center", d3.forceCenter(width / 2, height / 2))
             .force("x", d3.forceX(width / 2).strength(1))
             .force("y", d3.forceY(height / 2).strength(1))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force('link', d3.forceLink().distance(_linkDistance))
             .on('tick', ticked);
 
         const fb1 = $ => {
@@ -108,9 +108,8 @@ THE SOFTWARE.
 
             // create the links
             link = $.selectAll('.link')
-                .data(dataLinks);
-
-            link.enter()
+                .data(dataLinks)
+                .enter()
                 .append('line')
                 .attr('class', (d) => {
                     return 'link link-' + d.depth;
@@ -122,11 +121,10 @@ THE SOFTWARE.
             link.exit().remove();
 
             // establish the node selection
-            node = $.selectAll('.node').data(dataNodes);
-
-
-            // actually create nodes
-            node.enter().append('g')
+            node = $.selectAll('.node')
+                .data(dataNodes)
+                .enter()
+                .append('g')
                 .attr('class',
                     (d) => {
                         return 'node' + (d.root ? ' root' : '');
