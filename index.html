@@ -59,11 +59,6 @@
 <script>
     var fishbone = d3.fishbone();
     d3.json("./miserables.json").then(function(data) {
-        var size = (function () {
-            return {width: this.clientWidth, height: this.clientHeight};
-        }).bind(window.document.documentElement);
-        console.log(size);
-
         var svg = d3.select("body")
             .append("svg")
             .attr('width', 1200)

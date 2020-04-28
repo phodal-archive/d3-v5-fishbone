@@ -30,7 +30,7 @@ THE SOFTWARE.
         let dataLinks = [];
 
         const my = undefined;
-        const width = 900;
+        const width = 1200;
         const height = 800;
 
         // d3 selections and related things used in tick function
@@ -65,11 +65,9 @@ THE SOFTWARE.
         //   .on('tick', _tick);
 
         const forceLayout = d3.forceSimulation()
-            // .force("charge", d3.forceManyBody().strength(10))
-            .force("charge", d3.forceManyBody().strength(-3000))
+            .force("link", d3.forceLink())
+            .force("charge", d3.forceManyBody().distanceMin(200).strength(-250))
             .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("x", d3.forceX(width / 2).strength(1))
-            .force("y", d3.forceY(height / 2).strength(1))
             .on('tick', ticked);
 
         const fb1 = $ => {
@@ -309,7 +307,7 @@ THE SOFTWARE.
         }
 
 
-        function ticked() {
+        function ticked(e) {
             /*
               the primary layout mechanism: a fair amount of the work is done
               by links, but override a lot of it here.
@@ -318,14 +316,14 @@ THE SOFTWARE.
             */
 
             // this is a "little bit"
-            const k = 6 * 1;
+            let k = 6 * this.alpha();
             let a;
             let b;
 
             dataNodes.forEach(d => {
                 // handle the middle... could probably store the root width...
                 if (d.root) {
-                    // d.x = width - (marginSize + d.root.getBBox().width);
+                    d.x = width - (marginSize + root.getBBox().width);
                 }
                 if (d.tail) {
                     d.x = marginSize;
