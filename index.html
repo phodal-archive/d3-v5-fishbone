@@ -52,38 +52,29 @@
     }
 </style>
 <body>
-<svg id='viz'></svg>
 </body>
 
 <script src='https://d3js.org/d3.v5.min.js'></script>
-<script src='d3.fishbone.js'></script>
+<script src='./d3.fishbone.js'></script>
 <script>
-    // create the configurable selection modifier
     var fishbone = d3.fishbone();
+    d3.json("./miserables.json").then(function(data) {
+        var size = (function () {
+            return {width: this.clientWidth, height: this.clientHeight};
+        }).bind(window.document.documentElement);
+        console.log(size);
 
-    // load the data
-    d3.json("./data.json", function(data){
-        // the most reliable way to get the screen size
-        var size = (function(){
-                return {width: this.clientWidth, height: this.clientHeight};
-            }).bind(window.document.documentElement),
+        var svg = d3.select("body")
+            .append("svg")
+            .attr('width', 1200)
+            .attr('height', 800)
+            .datum(data)
+            .call(fishbone.defaultArrow)
+            .call(fishbone);
 
-            svg = d3.select("body")
-                .append("svg")
-                // firefox needs a real size
-                .attr(size())
-                // set the data so the reusable chart can find it
-                .datum(data)
-                // set up the default arrowhead
-                .call(fishbone.defaultArrow)
-                // call the selection modifier
-                .call(fishbone);
+        fishbone.force().restart();
 
-        // this is the actual `force`: just start it
-        fishbone.force().start();
-
-        // handle resizing the window
-        d3.select(window).on("resize", function(){
+        d3.select(window).on("resize", function () {
             fishbone.force()
                 .size([size().width, size().height])
                 .start();

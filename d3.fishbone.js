@@ -25,50 +25,54 @@ THE SOFTWARE.
 ;(function(d3){
     "use strict";
     d3.fishbone = function(){
-        /*
-          A Fishbone diagram implemented in d3.
-        */
+        let marginSize = 50;
+        let dataNodes = [];
+        let dataLinks = [];
 
-        // private variables
-        var _margin = 50,
-
-            // the data...
-            _nodes,
-            _links;
+        const my = undefined;
+        const width = 900;
+        const height = 800;
 
         // d3 selections and related things used in tick function
-        var _node,
-            _link,
-            _root,
-            _arrowId = function(d){ return "arrow"; },
+        let node;
+        let link;
+        let root;
 
-            // the children accessor
-            _children = function(d){ return d.children; },
+        const arrowId = () => 'arrow';
+        let children = d => d.children;
+        let label = d => {
+            if (d.depth >= 1 && d.amount) {
+                return d.name + ':' + d.amount;
+            }
+            return d.name;
+        };
 
-            // the label accessor
-            _label = function(d){ return d.name; },
+        let perNodeTick = d => {
+        };
 
-            // a custom tick accessor
-            _perNodeTick = function(d){},
+        const linkScale = d3.scaleLog()
+            .domain([1, 5])
+            .range([60, 30]);
 
+        // const forceLayout = d3.layout.force()
+        //   .gravity(0)
+        //   .size([
+        //     window.document.documentElement.clientWidth,
+        //     window.document.documentElement.clientHeight
+        //   ])
+        //   .linkDistance(_linkDistance)
+        //   .chargeDistance([10])
+        //   .on('tick', _tick);
 
-            // arbitrary "nice" values
-            _linkScale = d3.scale.log()
-                .domain([1, 5])
-                .range([60, 30]),
+        const forceLayout = d3.forceSimulation()
+            // .force("charge", d3.forceManyBody().strength(10))
+            .force("x", d3.forceX(width / 2).strength(1))
+            .force("y", d3.forceY(height / 2).strength(1))
+            .force("center", d3.forceCenter(width / 2, height / 2))
+            .force('link', d3.forceLink().distance(_linkDistance))
+            .on('tick', ticked);
 
-            // the main workhorse of the layout engine
-            _force = d3.layout.force()
-                .gravity(0)
-                .size([
-                    window.document.documentElement.clientWidth,
-                    window.document.documentElement.clientHeight
-                ])
-                .linkDistance(_linkDistance)
-                .chargeDistance([10])
-                .on("tick", _tick);
-
-        var fb1 = function($){
+        const fb1 = $ => {
             /*
               the d3.fishbone modifier, expecting to be called against an `svg:svg`
               or `svg:g` bound to the root node of a navigable tree, i.e.
@@ -91,93 +95,96 @@ THE SOFTWARE.
               - linkCount   int
             */
 
-            _links = [];
-            _nodes = [];
+            dataLinks = [];
+            dataNodes = [];
 
             // populate the nodes and the links globals as a side effect
             _build_nodes($.datum());
 
             // set the nodes and the links of the force
-            _force
-                .nodes(_nodes)
-                .links(_links);
+            forceLayout
+                .nodes(dataNodes)
+                .force('link', d3.forceLink().links(dataLinks));
 
             // create the links
-            _link = $.selectAll(".link")
-                .data(_links);
+            link = $.selectAll('.link')
+                .data(dataLinks);
 
-            _link.enter().append("line");
-
-            _link
-                .attr({
-                    "class": function(d){ return "link link-" + d.depth; },
-                    "marker-end": function(d){
-                        return d.arrow ? "url(#" + _arrowId(d) + ")" : null;
-                    }
+            link.enter()
+                .append('line')
+                .attr('class', (d) => {
+                    return 'link link-' + d.depth;
+                })
+                .attr('marker-end', (d) => {
+                    return d.arrow ? 'url(#' + arrowId() + ')' : null;
                 });
 
-            _link.exit().remove();
+            link.exit().remove();
 
             // establish the node selection
-            _node = $.selectAll(".node").data(_nodes);
+            node = $.selectAll('.node').data(dataNodes);
 
 
             // actually create nodes
-            _node.enter().append("g")
-                .attr({
-                    "class": function(d){ return "node" + (d.root ? " root" : ""); }
-                })
-                .append("text");
+            node.enter().append('g')
+                .attr('class',
+                    (d) => {
+                        return 'node' + (d.root ? ' root' : '');
+                    })
+                .append('text')
 
-            _node.select("text")
-                .attr({
-                    "class": function(d){ return "label-" + d.depth; },
-                    "text-anchor": function(d){
-                        return !d.depth ? "start" : d.horizontal ? "end" : "middle";
-                    },
-                    dy: function(d){
-                        return d.horizontal ? ".35em" : d.region === 1 ? "1em" : "-.2em";
+                .attr('class', (d) => {
+                    return 'label-' + d.depth;
+                })
+                .attr('stroke', (d) => {
+                    if (d.color) {
+                        return d.color;
                     }
                 })
-                .text(_label);
+                .attr('text-anchor', (d) => {
+                    return !d.depth ? 'start' : d.horizontal ? 'end' : 'middle';
+                })
+                .attr('dy', (d) => {
+                    return d.horizontal ? '.35em' : d.region === 1 ? '1em' : '-.2em';
+                })
+                .text(label);
 
-            _node.exit().remove();
+            node.exit().remove();
 
             // set up node events
-            _node
-                .call(_force.drag)
-                .on("mousedown", function(){ d3.event.stopPropagation(); });
+            node
+                // .call(forceLayout.drag)
+                .on('mousedown', () => {
+                    d3.event.stopPropagation();
+                });
 
             // select this so we know its width in tick
-            _root = $.select(".root").node();
+            root = $.select('.root').node();
         }; // fb1
 
-
-        function _arrow($){
+        function _arrow($) {
             // creates an svg:defs and marker with an arrow if needed...
             // really just an example, as they aren't very flexible
-            var defs = $.selectAll("defs").data([1]);
+            const defs = $.selectAll('defs').data([1]);
 
-            defs.enter().append("defs");
-
-            // create the arrows
-            defs.selectAll("marker#" + _arrowId())
+            defs.enter()
+                .append('defs')
+                .selectAll('marker#' + arrowId())
                 .data([1])
-                .enter().append("marker")
-                .attr({
-                    id: _arrowId(),
-                    viewBox: "0 -5 10 10",
-                    refX: 10,
-                    refY: 0,
-                    markerWidth: 10,
-                    markerHeight: 10,
-                    orient: "auto"
-                })
-                .append("path")
-                .attr({d: "M0,-5L10,0L0,5"});
+                .enter().append('marker')
+
+                .attr('id', arrowId())
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 10)
+                .attr('refY', 0)
+                .attr('markerWidth', 10)
+                .attr('markerHeight', 10)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5');
         }
 
-        function _build_nodes(node){
+        function _build_nodes(currentNode) {
             /*
               this builds up the real/fake nodes and links needed
               - a node on the "spine" can be like:
@@ -198,53 +205,54 @@ THE SOFTWARE.
                 - o--->
 
             */
-            _nodes.push(node);
+            dataNodes.push(currentNode);
 
-            var cx = 0;
+            let cx = 0;
 
-            var between = [node, node.connector],
-                nodeLinks = [{
-                    source: node,
-                    target: node.connector,
-                    arrow: true,
-                    depth: node.depth || 0
-                }],
-                prev,
-                childLinkCount;
+            let between = [currentNode, currentNode.connector];
+            const nodeLinks = [{
+                source: currentNode,
+                target: currentNode.connector,
+                arrow: true,
+                depth: currentNode.depth || 0
+            }];
+            let prev;
+            let childLinkCount;
 
-            if(!node.parent){
-                _nodes.push(prev = {tail: true});
-                between = [prev, node];
+            if (!currentNode.parent) {
+                dataNodes.push(prev = {tail: true});
+                between = [prev, currentNode];
                 nodeLinks[0].source = prev;
-                nodeLinks[0].target = node;
-                node.horizontal = true;
-                node.vertical = false;
-                node.depth = 0;
-                node.root = true;
-                node.totalLinks = []
-            }else{
-                node.connector.maxChildIdx = 0;
-                node.connector.totalLinks = [];
+                nodeLinks[0].target = currentNode;
+                currentNode.horizontal = true;
+                currentNode.vertical = false;
+                currentNode.depth = 0;
+                currentNode.root = true;
+                currentNode.totalLinks = [];
+            } else {
+                currentNode.connector.maxChildIdx = 0;
+                currentNode.connector.totalLinks = [];
             }
 
-            node.linkCount = 1;
+            currentNode.linkCount = 1;
 
-            (_children(node) || []).forEach(function(child, idx){
-                child.parent = node;
-                child.depth = (node.depth || 0) + 1;
+            (children(currentNode) || []).forEach((child, idx) => {
+                child.parent = currentNode;
+                child.depth = (currentNode.depth || 0) + 1;
                 child.childIdx = idx;
-                child.region = node.region ? node.region : (idx & 1 ? 1 : -1);
-                child.horizontal = !node.horizontal;
-                child.vertical = !node.vertical;
+                // tslint:disable-next-line:no-bitwise
+                child.region = idx & 1 ? currentNode.region ? currentNode.region : 1 : currentNode.region ? currentNode.region : -1;
+                child.horizontal = !currentNode.horizontal;
+                child.vertical = !currentNode.vertical;
 
-                if(node.root && prev && !prev.tail){
-                    _nodes.push(child.connector = {
-                        between: between,
+                if (currentNode.root && prev && !prev.tail) {
+                    dataNodes.push(child.connector = {
+                        between,
                         childIdx: prev.childIdx
-                    })
+                    });
                     prev = null;
-                }else{
-                    _nodes.push(prev = child.connector = {between: between, childIdx: cx++});
+                } else {
+                    dataNodes.push(prev = child.connector = {between, childIdx: cx++});
                 }
 
                 nodeLinks.push({
@@ -255,45 +263,55 @@ THE SOFTWARE.
 
                 // recurse capturing number of links created
                 childLinkCount = _build_nodes(child);
-                node.linkCount += childLinkCount;
+                currentNode.linkCount += childLinkCount;
                 between[1].totalLinks.push(childLinkCount);
             });
 
             between[1].maxChildIdx = cx;
 
-            Array.prototype.unshift.apply(_links, nodeLinks);
+            Array.prototype.unshift.apply(dataLinks, nodeLinks);
 
             // the number of links created byt this node and its children...
             // TODO: use `linkCount` and/instead of `childIdx` for spacing
-            return node.linkCount;
+            return currentNode.linkCount;
+        }
+
+        function fixna(x) {
+            if (isFinite(x)) {
+                return x;
+            }
+            return 0;
+        }
+
+        function updateLink(linkNode) {
+            linkNode
+                .attr('x1', (d) => {
+                    return fixna(d.source.x);
+                })
+                .attr('y1', (d) => {
+                    return fixna(d.source.y);
+                })
+                .attr('x2', (d) => {
+                    return fixna(d.target.x);
+                })
+                .attr('y2', (d) => {
+                    return fixna(d.target.y);
+                });
         }
 
 
-        function _linePosition($){
-            $.attr({
-                x1: function(d){ return d.source.x; },
-                y1: function(d){ return d.source.y; },
-                x2: function(d){ return d.target.x; },
-                y2: function(d){ return d.target.y; }
-            })
+        function updateNode(n) {
+            n.attr('transform', d => 'translate(' + d.x + ',' + d.y + ')');
         }
 
 
-        function _nodePosition($){
-            // uses an SVG `transform` to position nodes
-            $.attr("transform", function(d){
-                return "translate(" + d.x + "," + d.y + ")";
-            })
-        }
-
-
-        function _linkDistance(d){
+        function _linkDistance(d) {
             // make longer links for nodes with more children, or of lower depth
-            return (d.target.maxChildIdx + 1) * _linkScale(d.depth + 1);
+            return (d.target.maxChildIdx + 1) * linkScale(d.depth + 1);
         }
 
 
-        function _tick(e){
+        function ticked() {
             /*
               the primary layout mechanism: a fair amount of the work is done
               by links, but override a lot of it here.
@@ -302,36 +320,40 @@ THE SOFTWARE.
             */
 
             // this is a "little bit"
-            var k = 6 * e.alpha,
-                // cache some variables
-                size = _force.size(),
-                width = size[0],
-                height = size[1],
-                // scratch variables for lengthy expressions
-                a,
-                b;
+            const k = 6 * 1;
+            let a;
+            let b;
 
-            _nodes.forEach(function(d){
+            dataNodes.forEach(d => {
                 // handle the middle... could probably store the root width...
-                if(d.root){ d.x = width - (_margin + _root.getBBox().width); }
-                if(d.tail){ d.x = _margin; d.y = height / 2; }
+                if (d.root) {
+                    // d.x = width - (marginSize + d.root.getBBox().width);
+                }
+                if (d.tail) {
+                    d.x = marginSize;
+                    d.y = height / 2;
+                }
 
                 // put the first-generation items at the top and bottom
-                if(d.depth === 1){
-                    d.y = d.region === -1 ? _margin : (height - _margin);
+                if (d.depth === 1) {
+                    d.y = d.region === -1 ? marginSize : (height - marginSize);
                     d.x -= 10 * k;
                 }
 
                 // vertically-oriented tend towards the top and bottom of the page
-                if(d.vertical){ d.y += k * d.region; }
+                if (d.vertical) {
+                    d.y += k * d.region;
+                }
 
                 // everything tends to the left
-                if(d.depth){ d.x -= k; }
+                if (d.depth) {
+                    d.x -= k;
+                }
 
                 // position synthetic nodes at evently-spaced intervals...
                 // TODO: do something based on the calculated size of each branch
                 // since we don't have individual links anymore
-                if(d.between){
+                if (d.between) {
                     a = d.between[0];
                     b = d.between[1];
 
@@ -339,49 +361,56 @@ THE SOFTWARE.
                     d.y = b.y - (1 + d.childIdx) * (b.y - a.y) / (b.maxChildIdx + 1);
                 }
 
-                _perNodeTick(d);
+                perNodeTick(d);
             });
 
-            // actually apply all changes
-            _node.call(_nodePosition);
-            _link.call(_linePosition);
+            if (node) {
+                // actually apply all changes
+
+                node.call(updateNode);
+                link.call(updateLink);
+            }
         }
 
         // the d3.fishbone() public API
         // read-only
-        fb1.links = function(){ return _links; };
-        fb1.nodes = function(){ return _nodes; };
-        fb1.force = function(){ return _force; };
-
-        // callable
+        fb1.links = () => dataLinks;
+        fb1.nodes = () => dataNodes;
+        fb1.force = () => forceLayout;
         fb1.defaultArrow = _arrow;
-
-        // d3-style chainable
-        fb1.margin = function(_){
+        fb1.margin = (_) => {
             // how big is the whitespace around the diagram?
-            if(!arguments.length){ return _margin; }
-            _margin = _;
+            // if (!arguments.length) {
+            // return marginSize;
+            // }
+            marginSize = _;
             return my;
         };
 
-        fb1.children = function(_){
+        fb1.children = (_) => {
             // how  will children be sought from each node?
-            if(!arguments.length){ return _children; }
-            _children = _;
+            // if (!arguments.length) {
+            // return children;
+            // }
+            children = _;
             return my;
         };
 
-        fb1.label = function(_){
+        fb1.label = (_) => {
             // how will a label be sought from each node?
-            if(!arguments.length){ return _label; }
-            _label = _;
+            // if (!arguments.length) {
+            //   return label;
+            // }
+            label = _;
             return my;
         };
 
-        fb1.perNodeTick = function(_){
+        fb1._perNodeTick = (_) => {
             // what custom rules should be done per node?
-            if(!arguments.length){ return _perNodeTick; }
-            _perNodeTick = _;
+            // if (!arguments.length) {
+            // return perNodeTick;
+            // }
+            perNodeTick = _;
             return my;
         };
 
